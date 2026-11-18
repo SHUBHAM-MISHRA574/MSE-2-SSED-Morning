@@ -1,17 +1,17 @@
-services:
+﻿services:
   postgres:
     image: postgres:15-alpine
     container_name: mse_postgres
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-appdb}
+      POSTGRES_USER: ${POSTGRES_USER:-taskflow_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deployment_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-taskflow}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - app-network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-taskflow_user} -d ${POSTGRES_DB:-taskflow}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -28,22 +28,18 @@ services:
       retries: 5
 
   backend:
-    image: ${DOCKERHUB_USERNAME:-shubhammishra108}/backend:latest
+    image: ${DOCKERHUB_USERNAME:-shubhammishra108}/taskflow-backend:latest
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: mse_backend
     ports:
-      - "5000:5000"
+      - "3000:3000"
     environment:
-      PORT: 5000
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_USER: ${POSTGRES_USER:-postgres}
-      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      DB_NAME: ${POSTGRES_DB:-appdb}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
+      PORT: ${PORT:-3000}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://taskflow_user:deployment_change_me@postgres:5432/taskflow}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      JWT_SECRET: ${JWT_SECRET:-replace_with_a_long_random_secret}
     depends_on:
       postgres:
         condition: service_healthy
@@ -53,13 +49,13 @@ services:
       - app-network
 
   frontend:
-    image: ${DOCKERHUB_USERNAME:-shubhammishra108}/frontend:latest
+    image: ${DOCKERHUB_USERNAME:-shubhammishra108}/taskflow-frontend:latest
     build:
       context: ./frontend
       dockerfile: Dockerfile
     container_name: mse_frontend
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
       - backend
     networks:
